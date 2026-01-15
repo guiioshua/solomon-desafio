@@ -1,0 +1,17 @@
+services:
+# Servidor de origem de dados
+  source-server:
+    build: ./source_server
+    container_name: solomon-source
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./source_server:/app
+    networks:
+      - backend-network
+
+  # Próximos serviços
+
+networks:
+  backend-network:
+    driver: bridge
