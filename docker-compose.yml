@@ -4,26 +4,52 @@ services:
     build: ./source_server
     container_name: solomon-datasource-server
     ports:
-      - "8000:8000"
+      - "8000:8000" # Pra teste da API, GET direto
     volumes:
       - ./source_server:/app
     networks:
       - backend-network
 
+  postgres:
+    image: postgres:15-alpine
+    container_name: solomon-db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: solomon_analytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - backend-network
+    # Evitar bug de race-condition no ping da pipeline
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d solomon_analytics"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   pipeline:
     build: ./pipeline_service
     container_name: solomon-dbsync-service
     ports:
-      - "8081:8081" 
+      - "8081:8081" # Pra teste, POST via postman
     environment:
       - DATABASE_URL=postgres://admin:password123@postgres:5432/solomon_analytics?sslmode=disable
       - SOURCE_API_URL=http://source-server:8000/transactions
     depends_on:
-      - postgres
-      - source-server
+      postgres:
+        condition: service_healthy
+      source-server:
+        condition: service_started
     networks:
       - backend-network
 
 networks:
   backend-network:
     driver: bridge
+
+volumes:
+  pgdata:

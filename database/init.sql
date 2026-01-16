@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS aggregated.daily_metrics (
     total_revenue_cancelled NUMERIC (15,2) DEFAULT 0,
     count_approved INT DEFAULT 0,
     count_pending INT DEFAULT 0,
-    count_cancelled INT DEFAULT 0,
+    count_cancelled INT DEFAULT 0
 );
 
 -- CHAMADO PELO runPipeline() do pipeline_service
