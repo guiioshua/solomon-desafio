@@ -13,7 +13,7 @@ def get_transactions():
     try:
         df = pd.read_csv(DADOS_CSV, sep=';')
         if df['value'].dtype == 'object':
-            df['value'].str.replace(',', '.').astype(float)
+            df['value'] = df['value'].str.replace(',', '.').astype(float)
         
         dados = df.to_dict(orient='records')
         '''
