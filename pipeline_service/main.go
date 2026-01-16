@@ -86,7 +86,7 @@ func runPipeline(db *sql.DB) error {
 		INSERT INTO raw_data.transactions (order_id, created_at, status, value, payment_method)
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (order_id) DO UPDATE 
-		SET status = EXCLUDED.status, value = EXCLUDED.value; -- Para garantir idepotência caso a origem de dados mude
+		SET status = EXCLUDED.status, value = EXCLUDED.value; -- Para garantir idepotência na inserção de dados
 	`)
 	if err != nil {
 		tx.Rollback()

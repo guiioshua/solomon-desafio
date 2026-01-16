@@ -9,6 +9,7 @@ services:
       - ./source_server:/app
     networks:
       - backend-network
+
   pipeline:
     build: ./pipeline_service
     container_name: solomon-dbsync-service
