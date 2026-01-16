@@ -16,6 +16,19 @@ def get_transactions():
             df['value'].str.replace(',', '.').astype(float)
         
         dados = df.to_dict(orient='records')
+        '''
+        schema retornado:
+        [
+            {
+                "order_id": string,
+                "created_at": Datetime (string),
+                "status": string,
+                "value": float,
+                "payment_method": string
+            },
+            ...
+        ]
+        '''
         return jsonify(dados)
     
     except Exception as error:
