@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from flask_bcrypt import generate_password_hash
+from werkzeug.security import generate_password_hash
 import psycopg2
 
 load_dotenv()
@@ -17,8 +17,7 @@ def create_admin():
     # Caso volume do banco já tenha gravado os dados, mantém idempotente
     cur.execute("SELECT 1 FROM auth.users WHERE email = %s", (ADMIN_EMAIL,))
     if cur.fetchone() is None:
-
-        hashed_pw = generate_password_hash(ADMIN_PASSWORD).decode('utf-8')
+        hashed_pw = generate_password_hash(ADMIN_PASSWORD)
         cur.execute(
             "INSERT INTO auth.users (email, password_hash) VALUES (%s, %s)",
             (ADMIN_EMAIL, hashed_pw)
