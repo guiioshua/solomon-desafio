@@ -20,8 +20,6 @@ CREATE TABLE IF NOT EXISTS aggregated.daily_metrics (
 );
 
 CREATE SCHEMA IF NOT EXISTS auth;
-
--- 2. Create Users Table
 CREATE TABLE IF NOT EXISTS auth.users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,

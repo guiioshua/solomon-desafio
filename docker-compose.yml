@@ -1,15 +1,25 @@
 services:
-# Servidor de origem de dados
+  # ----------------------------------------------------------------
+  # SERVIDOR DE ORIGEM DOS DADOS
+  # ----------------------------------------------------------------
   source-server:
     build: ./source_server
     container_name: solomon-datasource-server
     ports:
-      - "8000:8000" # Pra teste da API, GET direto
+      - "8000:8000" # Para teste GET direto
     volumes:
       - ./source_server:/app
     networks:
       - backend-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/transactions"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
+  # ----------------------------------------------------------------
+  # BANCO DE DADOS
+  # ----------------------------------------------------------------
   postgres:
     image: postgres:15-alpine
     container_name: solomon-db
@@ -31,6 +41,31 @@ services:
       timeout: 5s
       retries: 5
 
+  # ----------------------------------------------------------------
+  # BACKEND 1
+  # ----------------------------------------------------------------
+  backend1:
+    build: ./backend1 
+    container_name: solomon-auth-service
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend1:/app
+    environment:
+      - DATABASE_URL=postgres://admin:password123@postgres:5432/solomon_analytics?sslmode=disable
+      - PIPELINE_SERVICE_URL=http://pipeline:8081/run
+      - API_SECRET_KEY=6a2a81de280077080507cf64681ded9e
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pipeline:
+        condition: service_started
+    networks:
+      - backend-network
+
+  # ----------------------------------------------------------------
+  # PIPELINE DE DADOS
+  # ----------------------------------------------------------------
   pipeline:
     build: ./pipeline_service
     container_name: solomon-dbsync-service
