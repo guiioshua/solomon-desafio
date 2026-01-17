@@ -3,13 +3,39 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 
-	_ "github.com/lib/pq" 
+	_ "github.com/lib/pq"
 )
+
+// Para padronizar respostas sempre em JSON 
+func sendJSON(w http.ResponseWriter, status int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}
+
+func PipelineHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Método não permitido"})
+			return
+		}
+
+		log.Println("Iniciando processamento da pipeline...")
+
+		sumario, err := runPipeline(db)
+		if err != nil {
+			log.Printf("Erro na pipeline: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		sendJSON(w, http.StatusOK, sumario)
+	}
+}
 
 func main() {
 	dbURL := os.Getenv("DATABASE_URL")
@@ -22,31 +48,16 @@ func main() {
 		log.Fatal("Falha ao abrir conexão com o banco:", err)
 	}
 	defer db.Close()
-
 	if err := db.Ping(); err != nil {
 		log.Fatal("Não foi possível alcançar o banco de dados:", err)
 	}
 
-	http.HandleFunc("/run", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Método não permitido.", http.StatusMethodNotAllowed)
-			return
-		}
-
-		log.Println("Iniciando processamento da pipeline...")
-
-		sumario, err := runPipeline(db)
-		if err != nil {
-			log.Printf("Erro na pipeline: %v", err)
-			http.Error(w, fmt.Sprintf("Falha na execução: %v", err), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(sumario)
-	})
+	// Precisa instanciar um gerenciador de roteamento
+	mux := http.NewServeMux()
+	mux.HandleFunc("/run", PipelineHandler(db)) // Chama função que injeta dependência no handler pra abrir conexões
 
 	log.Println("Pipeline Service ouvindo na porta 8081...")
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	if err := http.ListenAndServe(":8081", mux); err != nil {
+		log.Fatal(err)
+	}
 }
