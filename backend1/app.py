@@ -2,9 +2,10 @@ from datetime import timedelta
 from dotenv import load_dotenv
 from werkzeug.security import check_password_hash
 from os import getenv, environ
+import requests 
 import psycopg2
 
-from flask import Flask
+from flask import Flask, Response
 from flask import jsonify
 from flask import request
 from flask_jwt_extended import create_access_token
@@ -22,6 +23,8 @@ jwt = JWTManager(app)
 
 DB_URL = getenv("DATABASE_URL")
 connection = psycopg2.connect(DB_URL)
+
+PIPELINE_URL = getenv("PIPELINE_SERVICE_URL")
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -47,21 +50,23 @@ def login():
         if not check_password_hash(password_hash_db, password_input):
             return jsonify({"msg": "Senha incorreta"}), 401    
         
-        # Create token with the user ID as identity
         access_token = create_access_token(identity=str(id_db))
           
     return jsonify(access_token=access_token), 200
-            
-        
-# Protect a route with jwt_required, which will kick out requests
-# without a valid JWT present.
-@app.route("/protected", methods=["GET"])
+
+# É possível configurar fallbacks para problemas do token (faltante, não verificável, mal formado etc)            
+@app.route("/sync", methods=["GET"])
 @jwt_required()
-def protected():
-    # Access the identity of the current user with get_jwt_identity
-    current_user = get_jwt_identity()
-    return jsonify(logged_in_as=current_user), 200
+def sync():
+    r = requests.post(PIPELINE_URL, timeout=10)
+    return Response(
+        r.text,
+        status=r.status_code,
+        content_type=r.headers['Content-Type'],
+    )
 
 
 if __name__ == "__main__":
     app.run()
+    
+    
