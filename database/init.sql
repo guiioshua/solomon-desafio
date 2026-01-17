@@ -19,6 +19,16 @@ CREATE TABLE IF NOT EXISTS aggregated.daily_metrics (
     count_cancelled INT DEFAULT 0
 );
 
+CREATE SCHEMA IF NOT EXISTS auth;
+
+-- 2. Create Users Table
+CREATE TABLE IF NOT EXISTS auth.users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- CHAMADO PELO runPipeline() do pipeline_service
 CREATE OR REPLACE PROCEDURE refresh_dashboard_metrics()
 LANGUAGE plpgsql
