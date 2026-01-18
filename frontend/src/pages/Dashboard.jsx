@@ -3,7 +3,7 @@ import { metricsApi, authApi } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { 
   Container, Grid, Paper, Typography, Button, 
-  Box, CircularProgress, Card, CardContent 
+  Box, CircularProgress 
 } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -13,49 +13,48 @@ export default function Dashboard() {
   const [syncing, setSyncing] = useState(false);
   const navigate = useNavigate();
 
-  // Fetch
   const fetchData = async () => {
     try {
-      // Valor default
       const response = await metricsApi.get('/metrics?start_date=2026-01-01');
-      setData(response.data || []); // Para nulo
+      setData(response.data || []);
     } catch (error) {
-      console.error("Fetch error", error);
-      if (error.response && error.response.status === 401) {
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        alert("Session expired. Please login again.");
         navigate('/');
+      } else {
+        console.error("Fetch error", error);
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // OnLoad
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) navigate('/');
     fetchData();
   }, []);
 
-  // 3. Trigger Sync (Calls Backend 1)
   const handleSync = async () => {
     setSyncing(true);
     try {
       const token = localStorage.getItem('token');
-      await authApi.post('/sync', {}, {
+      const res = await authApi.post('/sync', {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Wait 2 seconds for Pipeline to finish (Naive approach, but works for MVP)
+      alert(res.data.message || "Sync started!");
       setTimeout(() => {
-        fetchData(); // Refresh data
+        fetchData();
         setSyncing(false);
       }, 2000);
     } catch (error) {
-      alert("Sync failed");
+      const msg = error.response?.data?.error || error.response?.data?.msg || "Sync failed";
+      const details = error.response?.data?.details || "";
+      alert(`Error: ${msg}\n${details}`);
       setSyncing(false);
     }
   };
 
-  // Lógica para redução
   const totalRevenue = data.reduce((acc, cur) => acc + cur.total_revenue_approved, 0);
   const totalOrders = data.reduce((acc, cur) => acc + cur.count_approved, 0);
   const pendingOrders = data.reduce((acc, cur) => acc + cur.count_pending, 0);
@@ -63,62 +62,92 @@ export default function Dashboard() {
   if (loading) return <CircularProgress sx={{ mt: 10, ml: '50%' }} />;
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {/* Header */}
-      <Box display="flex" justifyContent="space-between" mb={3}>
-        <Typography variant="h4">Dashboard</Typography>
-        <Button variant="contained" onClick={handleSync} disabled={syncing}>
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      {/* 1. HEADER SECTION */}
+      <Box display="flex" justifyContent="space-between" mb={4}>
+        <Typography variant="h4" component="h1" fontWeight="bold">
+          Solomon Analytics
+        </Typography>
+        <Button 
+          variant="contained" 
+          color="secondary"
+          onClick={handleSync} 
+          disabled={syncing}
+          sx={{ height: 40 }}
+        >
           {syncing ? 'Syncing...' : 'Sync Data'}
         </Button>
       </Box>
 
-      <Grid container spacing={3}>
-        {/* KPI Cards */}
+      {/* 2. METRICS SECTION (The 3 Cards) */}
+      <Grid container spacing={4}>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-            <Typography color="primary" variant="h6">Total Revenue</Typography>
-            <Typography component="p" variant="h4">
+          <Paper elevation={3} sx={{ p: 4, textAlign: 'center', height: '100%' }}>
+            <Typography color="textSecondary" variant="h6">Total Revenue</Typography>
+            <Typography variant="h3" color="primary" sx={{ mt: 2 }}>
               R$ {totalRevenue.toFixed(2)}
             </Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-            <Typography color="primary" variant="h6">Approved Orders</Typography>
-            <Typography component="p" variant="h4">{totalOrders}</Typography>
+          <Paper elevation={3} sx={{ p: 4, textAlign: 'center', height: '100%' }}>
+            <Typography color="textSecondary" variant="h6">Approved Orders</Typography>
+            <Typography variant="h3" sx={{ mt: 2 }}>
+              {totalOrders}
+            </Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-            <Typography color="warning.main" variant="h6">Pending Orders</Typography>
-            <Typography component="p" variant="h4">{pendingOrders}</Typography>
-          </Paper>
-        </Grid>
-
-        {/* Chart */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Revenue History</Typography>
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
-                <LineChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line 
-                    type="monotone" 
-                    dataKey="total_revenue_approved" 
-                    stroke="#1976d2" 
-                    strokeWidth={2}
-                    activeDot={{ r: 8 }} 
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+          <Paper elevation={3} sx={{ p: 4, textAlign: 'center', height: '100%' }}>
+            <Typography color="textSecondary" variant="h6">Pending Orders</Typography>
+            <Typography variant="h3" color="warning.main" sx={{ mt: 2 }}>
+              {pendingOrders}
+            </Typography>
           </Paper>
         </Grid>
       </Grid>
+
+      {/* 3. CHART SECTION (Completely Separated Box) */}
+      <Box sx={{ mt: 6 }}>
+        <Paper elevation={3} sx={{ p: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            Revenue History
+          </Typography>
+          
+          {/* Force minimum height and width to prevent "condensed" look */}
+          <div style={{ width: '100%', height: 500, minHeight: '500px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart 
+                data={data} 
+                margin={{ top: 20, right: 50, left: 20, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 12 }}
+                  tickMargin={10}
+                />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value) => [`R$ ${value}`, 'Revenue']}
+                  labelFormatter={(label) => `Date: ${label}`}
+                  contentStyle={{ backgroundColor: '#fff', borderRadius: '8px' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="total_revenue_approved" 
+                  stroke="#1976d2" 
+                  strokeWidth={3}
+                  dot={{ r: 5, strokeWidth: 2 }}
+                  activeDot={{ r: 8 }} 
+                  isAnimationActive={true}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Paper>
+      </Box>
+
     </Container>
   );
 }

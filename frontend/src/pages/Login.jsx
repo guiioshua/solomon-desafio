@@ -10,18 +10,16 @@ export default function Login() {
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
-    e.preventDefault(); // Prevents page reload
+    e.preventDefault();
     setError('');
 
     try {
-      // Chamar backend1
       const response = await authApi.post('/login', { email, password });
       localStorage.setItem('token', response.data.access_token);
-      
-      // Chama dashboard
       navigate('/dashboard');
     } catch (err) {
-      setError('Login failed. Check your credentials.');
+      const specificMessage = err.response?.data?.msg || err.response?.data?.error;
+      setError(specificMessage || 'Login failed. Check your connection.');
     }
   };
 
