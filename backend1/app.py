@@ -8,6 +8,7 @@ import psycopg2
 from flask import Flask, Response
 from flask import jsonify
 from flask import request
+from flask_cors import CORS
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
@@ -16,6 +17,8 @@ from flask_jwt_extended import JWTManager
 load_dotenv()
 
 app = Flask(__name__)
+
+CORS(app)
 
 app.config["JWT_SECRET_KEY"] = environ["API_SECRET_KEY"]
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
@@ -55,7 +58,7 @@ def login():
     return jsonify(access_token=access_token), 200
 
 # É possível configurar fallbacks para problemas do token (faltante, não verificável, mal formado etc)            
-@app.route("/sync", methods=["GET"])
+@app.route("/sync", methods=["POST"])
 @jwt_required()
 def sync():
     r = requests.post(PIPELINE_URL, timeout=10)

@@ -24,9 +24,9 @@ services:
     image: postgres:15-alpine
     container_name: solomon-db
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: solomon_analytics
     ports:
       - "5432:5432"
     volumes:
@@ -34,7 +34,6 @@ services:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - backend-network
-    # Evitar bug de race-condition no ping da pipeline
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d solomon_analytics"]
       interval: 5s
@@ -52,12 +51,12 @@ services:
     volumes:
       - ./backend1:/app
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - PIPELINE_SERVICE_URL=${PIPELINE_SERVICE_URL}
+      - DATABASE_URL=postgres://admin:password123@postgres:5432/solomon_analytics?sslmode=disable
+      - PIPELINE_SERVICE_URL=http://pipeline:8081/run
       - API_SECRET_KEY=${API_SECRET_KEY}
     depends_on:
       postgres:
-        condition: service_healthy # <--- Só inicia quando o banco estiver PRONTO
+        condition: service_healthy # Só inicia quando o banco estiver PRONTO
       pipeline:
         condition: service_started
     networks:
@@ -72,8 +71,7 @@ services:
     ports:
       - "8082:8082"
     environment:
-      # Usa as mesmas vars do .env raiz para manter consistência
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgres://admin:password123@postgres:5432/solomon_analytics?sslmode=disable
       - API_SECRET_KEY=${API_SECRET_KEY}
     depends_on:
       postgres:
@@ -90,8 +88,8 @@ services:
     ports:
       - "8081:8081" # Pra teste, POST via postman
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - SOURCE_API_URL=${SOURCE_API_URL}
+      - DATABASE_URL=postgres://admin:password123@postgres:5432/solomon_analytics?sslmode=disable
+      - SOURCE_API_URL=http://source-server:8000/transactions
     depends_on:
       postgres:
         condition: service_healthy
