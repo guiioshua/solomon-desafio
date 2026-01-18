@@ -3,13 +3,10 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/lib/pq"
 )
 
@@ -21,31 +18,39 @@ func sendJSON(w http.ResponseWriter, status int, data any) {
 
 func MetricsHandler(db *sql.DB, apiSecret []byte) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Evitar problemas com CORS no frontend
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
 		if r.Method != http.MethodGet {
 			sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Método não permitido"})
-		}
-		authHeader := r.Header.Get("Authorization");
-		if authHeader =="" {
-			sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Header de autenticação ausente"})
 			return
 		}
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("método de assinatura inesperado: %v", token.Header["alg"])
-			}
-			return apiSecret, nil
-		})
-		if err != nil || !token.Valid {
-			sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Token inválido ou expirado"})
+		// Chama de auth
+		_, err := ValidateToken(r, apiSecret)
+		if err != nil {
+			sendJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
 			return
 		}
-		log.Println("Requisição de métricas autorizada.")
-		
-		
 
-		sendJSON(w, http.StatusOK, map[string]string{"message": "Dados das métricas aqui"})
+		// DATA QUERY
+		startDate := r.URL.Query().Get("start_date")
+		endDate := r.URL.Query().Get("end_date")
+		metrics, err := GetDailyMetrics(db, startDate, endDate)
+		if err != nil {
+			log.Printf("Erro na query ao banco: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Erro ao buscar dados"})
+			return
+		}
+
+		sendJSON(w, http.StatusOK, metrics)
 	}
 }
 
@@ -72,5 +77,5 @@ func main() {
 	mux.HandleFunc("/metrics", MetricsHandler(db, apiSecret))
 
 	log.Println("Pipeline Service ouvindo na porta 8081...")
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	log.Fatal(http.ListenAndServe(":8082", mux))
 }
