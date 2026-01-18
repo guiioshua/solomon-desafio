@@ -42,7 +42,7 @@ services:
       retries: 5
 
   # ----------------------------------------------------------------
-  # BACKEND 1
+  # BACKEND 1 (Autenticação e serviço de sync)
   # ----------------------------------------------------------------
   backend1:
     build: ./backend1 
@@ -60,6 +60,24 @@ services:
         condition: service_healthy # <--- Só inicia quando o banco estiver PRONTO
       pipeline:
         condition: service_started
+    networks:
+      - backend-network
+
+  # ----------------------------------------------------------------
+  # BACKEND 2 (Api de métricas, para requests já autenticados)
+  # ----------------------------------------------------------------
+  backend2:
+    build: ./backend2
+    container_name: solomon-metrics-service
+    ports:
+      - "8082:8082"
+    environment:
+      # Usa as mesmas vars do .env raiz para manter consistência
+      - DATABASE_URL=${DATABASE_URL}
+      - API_SECRET_KEY=${API_SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - backend-network
 
