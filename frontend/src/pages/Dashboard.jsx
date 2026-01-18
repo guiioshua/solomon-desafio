@@ -14,16 +14,15 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   
-  // Date Slice State
+
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-
   const navigate = useNavigate();
 
-  // Helper: Find Min/Max dates from data array to set defaults
+  // Seta valores default pra slice
   const setDefaultsFromData = (dataset) => {
     if (dataset && dataset.length > 0) {
-      // Assuming data comes sorted from backend, but let's be safe
+      
       const dates = dataset.map(d => new Date(d.date));
       const minDate = new Date(Math.min(...dates)).toISOString().split('T')[0];
       const maxDate = new Date(Math.max(...dates)).toISOString().split('T')[0];
@@ -33,10 +32,10 @@ export default function Dashboard() {
     }
   };
 
-  // 1. Fetch Data (Accepts optional filter params)
+  // Fetch de analytics
   const fetchData = async (start = '', end = '') => {
     try {
-      // Build Query String
+       String
       let query = '/metrics';
       const params = [];
       if (start) params.push(`start_date=${start}`);
@@ -50,7 +49,6 @@ export default function Dashboard() {
       const resultData = response.data || [];
       setData(resultData);
 
-      // Only set defaults if we fetched "Everything" (no filters)
       if (!start && !end) {
         setDefaultsFromData(resultData);
       }
@@ -67,11 +65,10 @@ export default function Dashboard() {
     }
   };
 
-  // Initial Load
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) navigate('/');
-    fetchData(); // Fetch all (no params)
+    fetchData();
   }, []);
 
   // 2. Sync Logic
@@ -85,7 +82,7 @@ export default function Dashboard() {
       alert(res.data.message || "Sync started!");
       
       setTimeout(() => {
-        // After sync, fetch EVERYTHING again to update defaults
+        // Dá fetch em tudo após sync
         fetchData(); 
         setSyncing(false);
       }, 2000);
@@ -97,13 +94,12 @@ export default function Dashboard() {
     }
   };
 
-  // 3. Filter Button Logic
   const handleFilter = () => {
     setLoading(true);
     fetchData(startDate, endDate);
   };
 
-  // Metrics Calculations
+  // Cálculo das métricas
   const totalRevenue = data.reduce((acc, cur) => acc + cur.total_revenue_approved, 0);
   const totalOrders = data.reduce((acc, cur) => acc + cur.count_approved, 0);
   const pendingOrders = data.reduce((acc, cur) => acc + cur.count_pending, 0);
