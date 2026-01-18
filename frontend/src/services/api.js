@@ -10,7 +10,7 @@ export const authApi = axios.create({
 
 // Comunicação com backend2
 export const metricsApi = axios.create({
-  baseURL: 'http://localhost:8082', // Remember we mapped 8082 -> 8080
+  baseURL: 'http://localhost:8082',
 });
 
 // Verifica Token
