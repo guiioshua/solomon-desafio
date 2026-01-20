@@ -16,7 +16,7 @@ type DailyMetric struct {
 }
 
 // Tudo injetado durante o handler em main
-func GetDailyMetrics(db *sql.DB, startDate, endDate string) ([]DailyMetric, error) {
+func GetDailyMetrics(db *sql.DB, startDate, endDate string, paymentMethod string) ([]DailyMetric, error) {
 	baseQuery := `
 		SELECT 
 			date::text, 
@@ -39,6 +39,12 @@ func GetDailyMetrics(db *sql.DB, startDate, endDate string) ([]DailyMetric, erro
 	if endDate != "" {
 		conditions = append(conditions, fmt.Sprintf("date <= $%d", argCounter))
 		args = append(args, endDate)
+		argCounter++
+	}
+
+	if paymentMethod != "" && paymentMethod != "all" {
+		conditions = append(conditions, fmt.Sprintf("payment_method = $%d", argCounter))
+		args = append(args, paymentMethod)
 		argCounter++
 	}
 

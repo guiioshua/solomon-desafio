@@ -43,7 +43,8 @@ func MetricsHandler(db *sql.DB, apiSecret []byte) http.HandlerFunc {
 		// DATA QUERY
 		startDate := r.URL.Query().Get("start_date")
 		endDate := r.URL.Query().Get("end_date")
-		metrics, err := GetDailyMetrics(db, startDate, endDate)
+		paymentMethod := r.URL.Query().Get("payment_method")
+		metrics, err := GetDailyMetrics(db, startDate, endDate, paymentMethod)
 		if err != nil {
 			log.Printf("Erro na query ao banco: %v", err)
 			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Erro ao buscar dados"})
